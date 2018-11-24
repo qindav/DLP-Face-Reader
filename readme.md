@@ -1,5 +1,5 @@
 # PCD Face Loader
-
+Designed for Senior Capstone Project. Now updated with simple socket connections and small support for it.
 This was a modified project based off of [threejs' trackball example.](https://threejs.org/examples/misc_controls_trackball.html)
 It also uses a socketio file sender found [here.](https://github.com/rico345100/socket.io-file-example)
 
@@ -13,16 +13,12 @@ $ npm install
 $ node server
 ```
 ### Accessing page
-Load up:
+Use a browser and go to:
 ```
 localhost:3000
 ```
 
-No support is provided for ip addresses so far other than:
+No support is provided for ip addresses so far when viewing on other devices (in this case for the pi):
 ```
 192.168.0.26:3000
 ```
-When viewing on other devices.
-
-
-
