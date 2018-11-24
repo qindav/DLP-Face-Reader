@@ -1,0 +1,64 @@
+<html>
+	<head>
+		<title>PCD Loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+			#info {
+				color:#000;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+			}
+			a {
+				color: red;
+			}
+		</style>
+	</head>
+<body>
+	<div id="wrapper">
+	PCD face loader using three.js trackball controls<br />
+	MOVE mouse &amp; press left: rotate, middle: zoom, right: pan
+		<div id="buttons">
+		Broadcast (Pi Only):
+		<form id="form">
+			<input type="file" id="file" />
+			<input type="submit" value="Upload" accept=".pcd"/>
+		</form><br />
+		Client Functions Only:
+		<form id="localform">
+			<input type="file" id="fileinput" />
+			<input type="submit" value="Upload" accept=".pcd"/>
+		</form>
+		<button onclick="downloadFile()">Export</button>
+		<button onclick="checkFiles()">Check For Files</button>
+		<button onclick="cameraReset()">Reset View</button>
+		</div>
+	</div>
+
+	<!--Three Scripts-->
+	<script src="three.js"></script>
+	<script src="TrackballControls.js"></script>
+	<script src="WebGL.js"></script>
+	<script src="stats.min.js"></script>
+	<script src="PCDLoader.js"></script>
+	<!--<Custom js Scripts-->
+	<script src="buttons.js"></script>
+	<script src="setstage.js"></script>
+	
+	<!--Sockets-->
+	<script src="socket.io.js"></script>
+	<script src="socket.io-file-client.js"></script>
+	<script src="app.js"></script>
+</body>
+</html>
