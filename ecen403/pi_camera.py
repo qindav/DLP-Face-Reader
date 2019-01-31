@@ -10,9 +10,8 @@ import picamera.array
 
 class PiCamera(object):
 
-    def __init__(self, resolution):
+    def __init__(self):
         self.cam = picamera.PiCamera()
-        self.cam.resolution = resolution
 
     def close(self):
         self.cam.close()
@@ -21,3 +20,6 @@ class PiCamera(object):
         raw = picamera.array.PiRGBArray(self.cam)
         self.cam.capture(raw, format='bgr')
         return raw.array
+
+    def set_resolution(self, w, h):
+        self.cam.resolution = (w, h)

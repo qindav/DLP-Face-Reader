@@ -2,10 +2,12 @@
 # Matthew Kroesche
 # ECEN 403
 
+import os
 import subprocess
 import pypcd
 
 
+SOCKETS_DIR = '/home/pi/Desktop/ecen403/socketsfile'
 
 
 class WiFi(object):
@@ -15,7 +17,10 @@ class WiFi(object):
         self.popen = None
 
     def init(self):
+        cd = os.getcwd()
+        os.chdir(SOCKETS_DIR)
         self.popen = subprocess.Popen(('node', 'server'))
+        os.chdir(cd)
 
     def quit(self):
         self.popen.kill()
@@ -26,6 +31,6 @@ class WiFi(object):
     def send(self, pointcloud):
         # TODO: reformat array
         pcd = pypcd.make_xyz_pointcloud(pointcloud)
-        pcd.save('/home/pi/Desktop/ecen403/socketsfile/data/upload.pcd')
+        pcd.save(os.path.join(SOCKETS_DIR, 'data', 'upload.pcd'))
             
         
