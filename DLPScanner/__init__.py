@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# Structured light programming application
+# Entry point for structured light programming application
 # Matthew Kroesche
-# ECEN 403
+# ECEN 403-404
 
-from ecen403.master import Master
+from DLPScanner.master import Master
 
 if __name__ == '__main__':
     app = Master()
