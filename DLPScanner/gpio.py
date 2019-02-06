@@ -36,6 +36,12 @@ class IO(object):
     def quit(self):
         GPIO.cleanup()
 
+    def start_busy(self):
+        GPIO.output(BUSY_LED, GPIO.HIGH)
+
+    def end_busy(self):
+        GPIO.output(BUSY_LED, GPIO.LOW)
+
     def run(self):
         # Main I/O event loop
         while True:
@@ -45,12 +51,12 @@ class IO(object):
             if GPIO.input(SNAPSHOT_BUTTON) == GPIO.HIGH:
                 if not self.snapshot_reset:
                     self.snapshot_reset = True
-                    GPIO.output(BUSY_LED, GPIO.HIGH)
+                    self.start_busy()
                     GPIO.output(ERROR_LED, GPIO.LOW)
                     # This function blocks. No LEDs will update while the image data is being
                     # captured and processed.
                     data = self.master.opencv.snapshot()
-                    GPIO.output(BUSY_LED, GPIO.LOW)
+                    self.end_busy()
                     GPIO.output(ERROR_LED, GPIO.HIGH if data is None else GPIO.LOW)
                     if data is not None:
                         self.master.wifi.send(data)

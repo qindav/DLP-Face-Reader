@@ -18,12 +18,15 @@ import os
 
 CALIBRATION_PATH = '/home/pi/Desktop/stereo_calibration' # This is where the .npy format calibration results are saved.
 
-PCD_PATH = '/home/pi/Desktop' # This is where the .npy format pointcloud is saved.
-# (This is a debug step, and should eventually be disabled as it wastes time during processing.)
+IMAGE_PATH = '/home/pi/Desktop/stereo_captures' # This is where the .png format images are saved.
+PCD_PATH = '/home/pi/Desktop' # This is where the .npy format pointcloud/disparity map is saved.
+# (These are debug features, and should eventually be disabled as they waste precious time during processing.)
 
-CAM_SIZE = (640, 480)     # The resolution of the camera image arrays, in pixels (width * height)
-PROJ_SIZE = (320, 240)    # The resolution of the projector image arrays, in pixels (width * height)
-SCREEN_SIZE = (1600, 900) # The size of the actual screen. If this is not given it is assumed to be the same as PROJ_SIZE.
+LOAD_IMAGES = True # Debug feature that, if set, loads images from stereo_captures folder rather than capturing them again.
+
+CAM_SIZE = (640, 400)     # The resolution of the camera image arrays, in pixels (width * height)
+PROJ_SIZE = (320, 200)    # The resolution of the projector image arrays, in pixels (width * height)
+SCREEN_SIZE = (1280, 800) # The size of the actual screen. If this is not given it is assumed to be the same as PROJ_SIZE.
 
 BLACK_THRESH = None    # (Optional) The black threshold of the graycode
 WHITE_THRESH = None    # (Optional) The white threshold of the graycode
@@ -40,33 +43,33 @@ CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteri
 
 
 
-# Data from calibration 1/31/2019
+# Data from calibration 2/6/2019
 
 # Intrinsic matrix of first camera
-K1 = array([[ 8.20678344e+03,  0.00000000e+00, -3.26370639e+02],
-            [ 0.00000000e+00,  1.74604298e+03,  9.66591746e+01],
-            [ 0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
+K1 = array([[3.35352268e+02, 0.00000000e+00, 2.96520990e+02],
+            [0.00000000e+00, 1.95760960e+03, 2.21613711e+02],
+            [0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
 
 # Distortion coefficients of first camera
-D1 = array([[ 8.59074133e+01, -9.61661783e+03,  1.18820876e+00, -1.12460284e+00,  2.92978017e+05]])
+D1 = array([[-0.48329117, -9.01649549,  0.08715038,  0.0470222 , 15.107458  ]])
 
 # Intrinsic matrix of second camera
-K2 = array([[-4.96979095e+02,  0.00000000e+00,  3.57148066e+02],
-            [ 0.00000000e+00,  1.97157806e+03,  2.37721878e+02],
+K2 = array([[ 1.34497282e+03,  0.00000000e+00, -1.12959734e+02],
+            [ 0.00000000e+00,  3.97796121e+02,  1.52226040e+02],
             [ 0.00000000e+00,  0.00000000e+00,  1.00000000e+00]])
 
 # Distortion coefficients of second camera
-D2 = array([[-7.35981935e+02, -2.30543033e+04,  2.30632722e+00, 4.14637934e+01, -1.25697321e+05]])
+D2 = array([[ 5.35864795e+00, -7.94115712e+02,  2.22187683e-01,  2.21337076e+00,  7.84735964e+03]])
 
 # Rotation matrix between two cameras
-R = array([[ 0.82077767, -0.49915401,  0.27779362],
-           [ 0.53463173,  0.84252354, -0.06574946],
-           [-0.20122856,  0.20248297,  0.95838808]])
+R = array([[ 0.97237908, -0.05004974,  0.22797797],
+           [ 0.11890107,  0.94672185, -0.29929964],
+           [-0.20085186,  0.31813953,  0.92652349]])
 
 # Translation vector between two cameras
-T = array([[-20.59195632],
-           [ -3.08902014],
-           [ 76.36802418]])
+T = array([[-1.40581396],
+           [ 0.16046477],
+           [ 2.12343594]])
 
 
 
@@ -106,7 +109,7 @@ class OpenCV(object):
         self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.clear_frames()
         # Initialize the projector
-        namedWindow('projector')
+        namedWindow('projector', WINDOW_NORMAL)
         setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN)
         # Rectify if calibration data already exists
         if K1 is not None:
@@ -155,9 +158,31 @@ class OpenCV(object):
     def snapshot(self):
         # Capture and process a sequence of stereo images
         self.clear_frames()
-        for pattern in self.pattern:
-            imshow('projector', pattern)
-            self.capture()
+        if LOAD_IMAGES:
+            # Debugging ONLY: Load a sequence of previously captured images
+            for fname in sorted(os.listdir(IMAGE_PATH)):
+                im = imread(os.path.join(IMAGE_PATH, fname))
+                if fname.startswith('cam1'):
+                    self.frames1.append(im)
+                elif fname.startswith('cam2'):
+                    self.frames2.append(im)
+            if not (self.frames1 and self.frames2):
+                return None # Error signal: haven't previously captured anything
+        else:
+            # Capture a new sequence of images
+            for pattern in self.pattern:
+                imshow('projector', pattern)
+                self.capture()
+            # Save the images if necessary
+            if IMAGE_PATH:
+                for i, frame in enumerate(self.frames1):
+                    path = os.path.join(IMAGE_PATH, 'cam1_image%.2d.png' % i)
+                    print('Saving %s' % path)
+                    imwrite(path, frame)
+                for i, frame in enumerate(self.frames2):
+                    path = os.path.join(IMAGE_PATH, 'cam2_image%.2d.png' % i)
+                    print('Saving %s' % path)
+                    imwrite(path, frame)
         # Rectify the images
         for frame in self.frames1:
             remap(frame, self.map1x, self.map1y, INTER_NEAREST, frame, BORDER_CONSTANT)
@@ -171,10 +196,12 @@ class OpenCV(object):
         blackImages = numpy.array(blackImages)
         # Decode and reconstruct the pointcloud
         retval, disparityMap = self.graycode.decode(patternImages, blackImages=blackImages, whiteImages=whiteImages)
-        assert retval, 'Error decoding pattern images'
+        if not retval:
+            return None # Error signal
         disparityMap = numpy.float32(disparityMap)
         pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
         if PCD_PATH:
+            numpy.save(os.path.join(PCD_PATH, 'disparity.npy'), disparityMap)
             numpy.save(os.path.join(PCD_PATH, 'pointcloud.npy'), pointcloud)
         # TODO: error checking
         return pointcloud
@@ -198,7 +225,7 @@ class OpenCV(object):
         waitKey(1) # Update the windows
         # Capture a series of calibration images
         while True:
-            print('Press any key to capture an image. Press [ESCAPE] to quit.')
+            print('Press any key to capture an image. Press [ESCAPE] to finish calibrating.')
             # Camera preview loop
             while True:
                 # Show the mirrored captures, since this behavior is more intuitive.
@@ -229,7 +256,7 @@ class OpenCV(object):
                     imshow('cam1', frame1)
                     imshow('cam2', frame2)
                     print('Successfully found %d calibration data points.' % len(objpoints))
-                    print('Press any key to continue to the next capture. Press [ESCAPE] to quit.')
+                    print('Press any key to continue to the next capture. Press [ESCAPE] to finish calibrating.')
                     if waitKey() == 27:
                         break
                 else:

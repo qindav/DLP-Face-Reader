@@ -7,4 +7,5 @@
 from DLPScanner.cvstereo import *
 cv = OpenCV()
 cv.init()
+destroyWindow('projector')
 cv.calibrate()

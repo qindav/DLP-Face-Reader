@@ -25,9 +25,11 @@ class Master(object):
 
     def init(self):
         self.io.init()
+        self.io.start_busy() # Error light is lit while device is booting
         self.wifi.init()
         self.usb.init()
         self.opencv.init()
+        self.io.end_busy()
         self.on = True
 
     def quit(self):
