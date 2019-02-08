@@ -137,7 +137,8 @@ class OpenCV(object):
         # Close the cameras and the projector
         self.cam1.close()
         self.cam2.close()
-        destroyWindow('projector')
+        if not REUSE_CAPTURE_DATA:
+            destroyWindow('projector')
 
 
     def clear_frames(self):
@@ -182,8 +183,10 @@ class OpenCV(object):
             for fname in sorted(os.listdir(CAPTURE_PATH)):
                 im = imread(os.path.join(CAPTURE_PATH, fname))
                 if fname.startswith('left'):
+                    im = cvtColor(im, COLOR_BGR2GRAY)
                     self.frames1.append(im)
                 elif fname.startswith('right'):
+                    im = cvtColor(im, COLOR_BGR2GRAY)
                     self.frames2.append(im)
             if not (self.frames1 and self.frames2):
                 return None # Error signal: haven't previously captured anything
@@ -231,12 +234,15 @@ class OpenCV(object):
             return None # Error signal
         disparityMap = numpy.float32(disparityMap)
         pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
+        # Save the disparity map and pointcloud, both in NumPy and standard formats, if
+        # that debug flag is turned on.
         if CAPTURE_PATH:
             numpy.save(os.path.join(CAPTURE_PATH, 'disparity.npy'), disparityMap)
             disparityPng = numpy.uint8((-disparityMap).clip(0, 255))
             imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), disparityPng)
             numpy.save(os.path.join(CAPTURE_PATH, 'pointcloud.npy'), pointcloud)
-            save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'))
+            # Save pointcloud in plain text format for debug mode.
+            save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'), binary=False)
         # TODO: error checking
         return pointcloud
 
