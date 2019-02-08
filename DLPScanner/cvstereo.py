@@ -6,6 +6,7 @@ from numpy import *
 from cv2 import *
 from .pi_camera import *
 from .cv_camera import *
+from .pcd import *
 import os
 
 # This backend, which supports stereo calibration and capturing,
@@ -18,7 +19,7 @@ import os
 
 CALIB_PATH = '/home/pi/Desktop/stereo_calibration' # This is where the .png format calibration images and
 # .npy format calibration results are saved.
-CAPTURE_PATH = '/home/pi/Desktop/stereo_captures' # This is where the .png format captured images and
+CAPTURE_PATH = '/home/pi/Desktop/stereo_captures'  # This is where the .png format captured images and
 # .npy format pointcloud/disparity data are saved.
 # (These are debug features, and should eventually be disabled as they waste precious time.)
 
@@ -44,33 +45,44 @@ CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteri
 
 
 
-# Data from calibration 2/7/2019
+# Data from calibration 2/8/2019
 
 # Intrinsic matrix of first camera
-K1 = array([[506.02714246,   0.        , 327.43869217],
-             [  0.        , 506.83558152, 208.42300576],
-             [  0.        ,   0.        ,   1.        ]])
+K1 = \
+array([[506.02714246,   0.        , 327.43869217],
+       [  0.        , 506.83558152, 208.42300576],
+       [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of first camera
-D1 = array([[ 0.14277543, -0.04825507,  0.00326943,  0.00599028, -0.53504333]])
+D1 = \
+array([[ 0.14277543, -0.04825507,  0.00326943,  0.00599028, -0.53504333,
+         0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+         0.        ,  0.        ,  0.        ,  0.        ]])
 
 # Intrinsic matrix of second camera
-K2 = array([[470.69605035,   0.        , 323.66070366],
-            [  0.        , 392.22935351, 192.1222664 ],
-            [  0.        ,   0.        ,   1.        ]])
+K2 = \
+array([[472.29697008,   0.        , 325.2902712 ],
+       [  0.        , 393.04568793, 192.66877657],
+       [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of second camera
-D2 = array([[-0.44817976,  0.33944123,  0.00047584, -0.00397904, -0.19835281]])
+D2 = \
+array([[-0.45360399,  0.33141038, -0.00127511, -0.00568173, -0.1871959 ,
+         0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
+         0.        ,  0.        ,  0.        ,  0.        ]])
 
 # Rotation matrix between two cameras
-R = array([[-0.27891189,  0.07125989,  0.95766914],
-           [-0.77661871,  0.56984697, -0.26858485],
-           [-0.56486418, -0.81865528, -0.10359534]])
+R = \
+array([[ 0.96130185,  0.27394812, -0.02917519],
+       [-0.27518946,  0.95983298, -0.05469372],
+       [ 0.01302007,  0.06060588,  0.99807685]])
 
 # Translation vector between two cameras
-T = array([[-14.5246049 ],
-           [  2.66627853],
-           [ 14.49569256]])
+T = \
+array([[-1.95912708],
+       [ 0.60067235],
+       [-0.1080526 ]])
+
 
 
 
@@ -110,9 +122,10 @@ class OpenCV(object):
         self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.clear_frames()
         # Initialize the projector
-        namedWindow('projector', WINDOW_NORMAL)
-        setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN)
-        waitKey(1)
+        if not REUSE_CAPTURE_DATA:
+            namedWindow('projector', WINDOW_NORMAL)
+            setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN)
+            waitKey(1)
         # Rectify if calibration data already exists
         if K1 is not None:
             self.rectify(K1, D1, K2, D2, R, T)
@@ -168,9 +181,9 @@ class OpenCV(object):
             # Debugging ONLY: Load a sequence of previously captured images
             for fname in sorted(os.listdir(CAPTURE_PATH)):
                 im = imread(os.path.join(CAPTURE_PATH, fname))
-                if fname.startswith('cam1'):
+                if fname.startswith('left'):
                     self.frames1.append(im)
-                elif fname.startswith('cam2'):
+                elif fname.startswith('right'):
                     self.frames2.append(im)
             if not (self.frames1 and self.frames2):
                 return None # Error signal: haven't previously captured anything
@@ -196,6 +209,16 @@ class OpenCV(object):
         for frame in self.frames2:
             rect = remap(frame, self.map2x, self.map2y, INTER_NEAREST, None, BORDER_CONSTANT)
             self.rect2.append(rect)
+        # Save the rectified images if necessary
+        if CAPTURE_PATH:
+            for i, frame in enumerate(self.rect1):
+                path = os.path.join(CAPTURE_PATH, 'rect_left%.2d.png' % i)
+                print('Saving %s' % path)
+                imwrite(path, frame)
+            for i, frame in enumerate(self.rect2):
+                path = os.path.join(CAPTURE_PATH, 'rect_right%.2d.png' % i)
+                print('Saving %s' % path)
+                imwrite(path, frame)
         patternImages = [self.rect1[:-2], self.rect2[:-2]]
         whiteImages = [self.rect1[-2], self.rect2[-2]]
         blackImages = [self.rect1[-1], self.rect2[-1]]
@@ -210,7 +233,10 @@ class OpenCV(object):
         pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
         if CAPTURE_PATH:
             numpy.save(os.path.join(CAPTURE_PATH, 'disparity.npy'), disparityMap)
+            disparityPng = numpy.uint8((-disparityMap).clip(0, 255))
+            imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), disparityPng)
             numpy.save(os.path.join(CAPTURE_PATH, 'pointcloud.npy'), pointcloud)
+            save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'))
         # TODO: error checking
         return pointcloud
 
@@ -269,6 +295,13 @@ class OpenCV(object):
                 ret2, corners2 = findChessboardCorners(self.frames2[-1], CB_SIZE, None)
                 if ret2:
                     print('Found corners using camera #2.')
+                    # Make sure the corners are in the right order
+                    xdelta1 = corners1[0, 0, 0] - corners1[-1, 0, 0]
+                    xdelta2 = corners2[0, 0, 0] - corners2[-1, 0, 0]
+                    if (xdelta1 > 0) != (xdelta2 > 0):
+                        # They're not, so switch them.
+                        print('Switching order of coordinates in camera #2')
+                        corners2 = corners2[::-1]
                     # Refine the corners
                     subpix1 = cornerSubPix(self.frames1[-1], corners1, WIN_SIZE, (-1, -1), CRITERIA)
                     subpix2 = cornerSubPix(self.frames2[-1], corners2, WIN_SIZE, (-1, -1), CRITERIA)
@@ -278,14 +311,16 @@ class OpenCV(object):
                     if CALIB_PATH and not REUSE_CALIB_DATA:
                         imwrite(os.path.join(CALIB_PATH,  'left%.2d.png' % (len(objpoints)-1)), self.frames1[-1])
                         imwrite(os.path.join(CALIB_PATH, 'right%.2d.png' % (len(objpoints)-1)), self.frames2[-1])
-                    frame1 = drawChessboardCorners(self.frames1[-1], CB_SIZE, subpix1, ret1)
-                    frame2 = drawChessboardCorners(self.frames2[-1], CB_SIZE, subpix2, ret2)
+                    frame1 = cvtColor(self.frames1[-1], COLOR_GRAY2BGR)
+                    frame1 = drawChessboardCorners(frame1, CB_SIZE, subpix1, ret1)
+                    frame2 = cvtColor(self.frames2[-1], COLOR_GRAY2BGR)
+                    frame2 = drawChessboardCorners(frame2, CB_SIZE, subpix2, ret2)
                     imshow('cam1', frame1)
                     imshow('cam2', frame2)
                     print('Successfully found %d calibration data point%s.' % (len(objpoints), '' if len(objpoints) == 1 else 's'))
                     if REUSE_CALIB_DATA:
                         # If we're just reusing old data, don't waste the user's time by making them press keys for no reason.
-                        waitKey(500)
+                        waitKey(1000)
                     else:                        
                         print('Press any key to continue to the next capture. Press [ESCAPE] to finish calibrating.')
                         if waitKey() == 27:
@@ -333,14 +368,22 @@ class OpenCV(object):
         print('D2 =\n%r\n' % D2)
         print('Reprojection error %g' % retval)
         print()
-        retval, K1, D1, K2, D2, R, T, E, F = stereoCalibrate(objpoints, imgpoints1, imgpoints2, K1, D1, K2, D2, CAM_SIZE)
+        retval, K1, D1, K2, D2, R, T, E, F = stereoCalibrate(objpoints, imgpoints1, imgpoints2, K1, D1, K2, D2, CAM_SIZE,
+                                                             flags = CALIB_FIX_INTRINSIC | CALIB_RATIONAL_MODEL | CALIB_FIX_PRINCIPAL_POINT)
         print('Stereo calibration:')
-        print('K1 =\n%r\n' % K1)
-        print('D1 =\n%r\n' % D1)
-        print('K2 =\n%r\n' % K2)
-        print('D2 =\n%r\n' % D2)
-        print('R =\n%r\n' % R)
-        print('T =\n%r\n' % T)
+        print()
+        print('# Intrinsic matrix of first camera')
+        print('K1 = \\\n%r\n' % K1)
+        print('# Distortion coefficients of first camera')
+        print('D1 = \\\n%r\n' % D1)
+        print('# Intrinsic matrix of second camera')
+        print('K2 = \\\n%r\n' % K2)
+        print('# Distortion coefficients of second camera')
+        print('D2 = \\\n%r\n' % D2)
+        print('# Rotation matrix between two cameras')
+        print('R = \\\n%r\n' % R)
+        print('# Translation vector between two cameras')
+        print('T = \\\n%r\n' % T)
         print('Reprojection error %g' % retval)
         print()
         # Set up remap and perspective transform data needed by snapshot().
