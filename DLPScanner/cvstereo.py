@@ -46,7 +46,7 @@ SQUARE_SIZE = 1.0      # The unit size of the chessboard squares
 
 CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteria used in calibration
 
-COORD_THRESHOLD = 100  # Threshold for pointcloud distance from the origin
+COORD_THRESH = 100     # Threshold for pointcloud distance from the origin
 
 
 
@@ -261,7 +261,7 @@ class OpenCV(object):
         # Generate the pointcloud
         pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
         pointcloud[thresh == 0] = numpy.inf
-        pointcloud[(abs(pointcloud) > COORD_THRESH).any(1)] = numpy.inf
+        pointcloud[(abs(pointcloud) > COORD_THRESH).any(2)] = numpy.inf
         # Save the disparity map and pointcloud, both in NumPy and standard formats, if
         # that debug flag is turned on.
         if CAPTURE_PATH:

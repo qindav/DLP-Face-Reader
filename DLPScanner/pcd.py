@@ -43,7 +43,7 @@ def load_pcd(filename):
             if line[0] == b'DATA':
                 format = line[1]
                 assert format in (b'ascii', b'binary')
-                pointcloud = numpy.fromfile(o, numpy.float32, n*3, (b'' if format == b'binary' else b' '))
+                pointcloud = numpy.fromfile(o, numpy.float32, n*3, ('' if format == b'binary' else ' '))
                 return pointcloud.reshape((n, 3))
                 
         
