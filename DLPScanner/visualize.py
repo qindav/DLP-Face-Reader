@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Visualization script with VPython
 # Matthew Kroesche
 # ECEN 404
