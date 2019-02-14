@@ -30,3 +30,19 @@ DATA %b
             # ASCII data
             for point in points:
                 o.write(b'%g %g %g\n' % tuple(point))
+
+
+
+def load_pcd(filename):
+    with open(filename, 'rb') as o:
+        while True:
+            line = o.readline().split()
+            if line[0] == b'DATA':
+                format = line[1]
+                if format not in (b'ascii', b'binary'):
+                    return
+                return numpy.fromfile(o, sep=(b'' if format == b'binary' else b' '))
+        
+            
+        
+            

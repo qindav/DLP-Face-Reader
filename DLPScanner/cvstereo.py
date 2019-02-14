@@ -4,24 +4,28 @@
 
 from numpy import *
 from cv2 import *
+import os
+
 from .pi_camera import *
 from .cv_camera import *
 from .pcd import *
-import os
+from .bench import *
 
 # This backend, which supports stereo calibration and capturing,
 # has been designed to replace the broken backends opencv.py
 # and pyimage.py.
 
+Bench.on = False # Disable benchmarking
+
 
 
 # Macros and constants
 
-CALIB_PATH = '/home/pi/Desktop/stereo_calibration' # This is where the .png format calibration images and
+CALIB_PATH = None # This is where the .png format calibration images and
 # .npy format calibration results are saved.
-CAPTURE_PATH = '/home/pi/Desktop/stereo_captures'  # This is where the .png format captured images and
+CAPTURE_PATH = None # This is where the .png format captured images and
 # .npy format pointcloud/disparity data are saved.
-# (These are debug features, and should eventually be disabled as they waste precious time.)
+# (These are debug features, and should ultimately be disabled as they waste precious time.)
 
 REUSE_CALIB_DATA   = False # Debug feature that, if set, loads images from CALIB_PATH rather than capturing them again
 REUSE_CAPTURE_DATA = False # Debug feature that, if set, loads images from CAPTURE_PATH folder rather than capturing them again.
@@ -33,14 +37,16 @@ SCREEN_SIZE = (1280, 800) # The size of the actual screen. If this is not given 
 BLACK_THRESH = None    # (Optional) The black threshold of the graycode
 WHITE_THRESH = None    # (Optional) The white threshold of the graycode
 
-PRE_DELAY = 100        # The delay (in milliseconds) between the graycode pattern updating and the image being captured
-POST_DELAY = 100       # The delay (in milliseconds) after an image is captured
+PRE_DELAY = 50         # The delay (in milliseconds) between the graycode pattern updating and the image being captured
+POST_DELAY = 20        # The delay (in milliseconds) after an image is captured
 
 CB_SIZE = (7, 9)       # The size of the chessboard used in calibration
 WIN_SIZE = (11, 11)    # The size of the search window used in calibration
 SQUARE_SIZE = 1.0      # The unit size of the chessboard squares
 
 CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteria used in calibration
+
+COORD_THRESHOLD = 100  # Threshold for pointcloud distance from the origin
 
 
 
@@ -161,16 +167,26 @@ class OpenCV(object):
 
     def capture(self):
         # Capture a single image with both cameras
-        waitKey(PRE_DELAY)
-        frame1 = self.cam1.capture()
-        frame1 = resize(frame1, CAM_SIZE)
-        frame1 = cvtColor(frame1, COLOR_BGR2GRAY)
-        self.frames1.append(frame1)
-        frame2 = self.cam2.capture()
-        frame2 = resize(frame2, CAM_SIZE)
-        frame2 = cvtColor(frame2, COLOR_BGR2GRAY)
-        self.frames2.append(frame2)
-        waitKey(POST_DELAY)
+        with Bench('PRE_DELAY'):
+            waitKey(PRE_DELAY)
+        with Bench('Left camera capture'):
+            frame1 = self.cam1.capture()
+        with Bench('Resize'):
+            frame1 = resize(frame1, CAM_SIZE)
+        with Bench('Convert'):
+            frame1 = cvtColor(frame1, COLOR_BGR2GRAY)
+        with Bench('Append'):
+            self.frames1.append(frame1)
+        with Bench('Right camera capture'):
+            frame2 = self.cam2.capture()
+        with Bench('Resize'):
+            frame2 = resize(frame2, CAM_SIZE)
+        with Bench('Convert'):
+            frame2 = cvtColor(frame2, COLOR_BGR2GRAY)
+        with Bench('Append'):
+            self.frames2.append(frame2)
+        with Bench('POST_DELAY'):
+            waitKey(POST_DELAY)
             
         
 
@@ -231,15 +247,27 @@ class OpenCV(object):
         # Decode and reconstruct the pointcloud
         retval, disparityMap = self.graycode.decode(patternImages, blackImages=blackImages, whiteImages=whiteImages)
         if not retval:
-            return None # Error signal
+            return None # Error signal - decode() failed
         disparityMap = numpy.float32(disparityMap)
+        # Process the disparity map
+        min = disparityMap.min()
+        max = disparityMap.max()
+        if min == max:
+            return None # Error signal - no data
+        alpha = 255.0 / (max - min)
+        scaledDisparityMap = convertScaleAbs(disparityMap, alpha=alpha)
+        # Use a threshold to remove noise
+        retval, thresh = threshold(scaledDisparityMap, 0, 255, THRESH_OTSU | THRESH_BINARY)
+        # Generate the pointcloud
         pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
+        pointcloud[thresh == 0] = numpy.inf
+        pointcloud[(abs(pointcloud) > COORD_THRESH).any(1)] = numpy.inf
         # Save the disparity map and pointcloud, both in NumPy and standard formats, if
         # that debug flag is turned on.
         if CAPTURE_PATH:
             numpy.save(os.path.join(CAPTURE_PATH, 'disparity.npy'), disparityMap)
-            disparityPng = numpy.uint8((-disparityMap).clip(0, 255))
-            imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), disparityPng)
+            colorDisparityMap = applyColorMap(scaledDisparityMap, COLORMAP_JET)
+            imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), colorDisparityMap)
             numpy.save(os.path.join(CAPTURE_PATH, 'pointcloud.npy'), pointcloud)
             # Save pointcloud in plain text format for debug mode.
             save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'), binary=False)
