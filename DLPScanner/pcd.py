@@ -25,7 +25,7 @@ DATA %b
 ''' % (w, h, len(points), b'binary' if binary else b'ascii'))
         if binary:
             # Binary data
-            points.tofile(filename)
+            points.tofile(o)
         else:
             # ASCII data
             for point in points:
@@ -35,13 +35,17 @@ DATA %b
 
 def load_pcd(filename):
     with open(filename, 'rb') as o:
+        n = 0
         while True:
             line = o.readline().split()
+            if line[0] == b'POINTS':
+                n = int(line[1])
             if line[0] == b'DATA':
                 format = line[1]
-                if format not in (b'ascii', b'binary'):
-                    return
-                return numpy.fromfile(o, sep=(b'' if format == b'binary' else b' '))
+                assert format in (b'ascii', b'binary')
+                pointcloud = numpy.fromfile(o, numpy.float32, n*3, (b'' if format == b'binary' else b' '))
+                return pointcloud.reshape((n, 3))
+                
         
             
         
