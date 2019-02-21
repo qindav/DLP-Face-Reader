@@ -35,7 +35,7 @@ DATA %b
 
 
 def load_pcd(filename):
-    # Load a pointcloud from .pcd format. Return the NumPy array
+    # Load a pointcloud from .pcd format. Return the Nx3 NumPy array.
     with open(filename, 'rb') as o:
         n = 0
         while True:
@@ -53,21 +53,21 @@ def load_pcd(filename):
 def filter_pcd(pointcloud, d=2):
     # Try to remove the noise from a pointcloud. (Operates in place.)
     # First, calculate the mean Z distance from each point to its neighbors
-    z = pcd[:, 2]
-    isinf = numpy.isinf(points).any(1)
+    z = pointcloud[:, :, 2]
+    isinf = numpy.isinf(pointcloud).any(2)
     counts = numpy.zeros(z.shape, z.dtype)
     zsum = numpy.zeros(z.shape, z.dtype)
     # Horizontal distances
     ok = ~isinf[:, :-1] & ~isinf[:, 1:]
-    zsum[:, :-1][ok] += abs(points[:, :-1][ok] - points[:, 1:][ok])
+    zsum[:, :-1][ok] += abs(z[:, :-1][ok] - z[:, 1:][ok])
     counts[:, :-1][ok] += 1
-    zsum[:, 1:][ok] += abs(points[:, :-1][ok] - points[:, 1:][ok])
+    zsum[:, 1:][ok] += abs(z[:, :-1][ok] - z[:, 1:][ok])
     counts[:, 1:][ok] += 1
     # Vertical distances
     ok = ~isinf[:-1, :] & ~isinf[1:, :]
-    zsum[:-1, :][ok] += abs(points[:-1, :][ok] - points[1:, :][ok])
+    zsum[:-1, :][ok] += abs(z[:-1, :][ok] - z[1:, :][ok])
     counts[:-1, :][ok] += 1
-    zsum[1:, :][ok] += abs(points[:-1, :][ok] - points[1:, :][ok])
+    zsum[1:, :][ok] += abs(z[:-1, :][ok] - z[1:, :][ok])
     counts[1:, :][ok] += 1
     isinf |= (counts == 0)
     if isinf.all():

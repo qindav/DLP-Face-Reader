@@ -22,7 +22,7 @@ ERROR_LED = 24
 # If set to a nonzero integer, then at the beginning the processor
 # sleeps for that many seconds, and then automatically captures a pointcloud.
 # After that the application runs normally.
-AUTO_TIMER = 5
+AUTO_TIMER = 0
 
 
 
@@ -38,6 +38,7 @@ class IO(object):
     def init(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
+        GPIO.setup(POWER_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(SNAPSHOT_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup([POWER_LED, WIFI_LED, USB_LED, BUSY_LED, ERROR_LED], GPIO.OUT, initial=GPIO.LOW)
         GPIO.output(POWER_LED, GPIO.HIGH) # Power LED should always be lit

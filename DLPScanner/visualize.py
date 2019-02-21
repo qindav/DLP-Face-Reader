@@ -1,12 +1,16 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 
 # Visualization script with VPython
 # Matthew Kroesche
 # ECEN 404
 
-from visual import *
-from DLPScanner.pcd import *
+# Note the /usr/bin/python instead of /usr/bin/env python.
+# This is because we specifically need the Pi's standard version of python,
+# which has VPython; not the phantom version within the CV workspace.
+
 import sys
+from visual import *
+from pcd import *
 
 
 def visualize(pcd):
@@ -41,6 +45,10 @@ def visualize(pcd):
 
 # Read pointcloud file from command line
 if __name__ == '__main__':
-    visualize(load_pcd(sys.argv[1]))
+    try:
+        filename = sys.argv[1]
+    except IndexError:
+        filename = '/home/pi/Desktop/DLPScanner/socketsfile/data/upload.pcd'
+    visualize(load_pcd(filename))
 
 

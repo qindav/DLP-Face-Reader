@@ -193,86 +193,87 @@ class OpenCV(object):
 
     def snapshot(self):
         # Capture and process a sequence of stereo images
-        self.clear_frames()
-        if REUSE_CAPTURE_DATA:
-            # Debugging ONLY: Load a sequence of previously captured images
-            for fname in sorted(os.listdir(CAPTURE_PATH)):
-                im = imread(os.path.join(CAPTURE_PATH, fname))
-                if fname.startswith('left'):
-                    im = cvtColor(im, COLOR_BGR2GRAY)
-                    self.frames1.append(im)
-                elif fname.startswith('right'):
-                    im = cvtColor(im, COLOR_BGR2GRAY)
-                    self.frames2.append(im)
-            if not (self.frames1 and self.frames2):
-                return None # Error signal: haven't previously captured anything
-        else:
-            # Capture a new sequence of images
-            for pattern in self.pattern:
-                imshow('projector', pattern)
-                self.capture()
-            # Save the images if necessary
+        with Bench('Total processing time'):
+            self.clear_frames()
+            if REUSE_CAPTURE_DATA:
+                # Debugging ONLY: Load a sequence of previously captured images
+                for fname in sorted(os.listdir(CAPTURE_PATH)):
+                    im = imread(os.path.join(CAPTURE_PATH, fname))
+                    if fname.startswith('left'):
+                        im = cvtColor(im, COLOR_BGR2GRAY)
+                        self.frames1.append(im)
+                    elif fname.startswith('right'):
+                        im = cvtColor(im, COLOR_BGR2GRAY)
+                        self.frames2.append(im)
+                if not (self.frames1 and self.frames2):
+                    return None # Error signal: haven't previously captured anything
+            else:
+                # Capture a new sequence of images
+                for pattern in self.pattern:
+                    imshow('projector', pattern)
+                    self.capture()
+                # Save the images if necessary
+                if CAPTURE_PATH:
+                    for i, frame in enumerate(self.frames1):
+                        path = os.path.join(CAPTURE_PATH, 'left%.2d.png' % i)
+                        print('Saving %s' % path)
+                        imwrite(path, frame)
+                    for i, frame in enumerate(self.frames2):
+                        path = os.path.join(CAPTURE_PATH, 'right%.2d.png' % i)
+                        print('Saving %s' % path)
+                        imwrite(path, frame)
+            # Rectify the images
+            for frame in self.frames1:
+                rect = remap(frame, self.map1x, self.map1y, INTER_NEAREST, None, BORDER_CONSTANT)
+                self.rect1.append(rect)
+            for frame in self.frames2:
+                rect = remap(frame, self.map2x, self.map2y, INTER_NEAREST, None, BORDER_CONSTANT)
+                self.rect2.append(rect)
+            # Save the rectified images if necessary
             if CAPTURE_PATH:
-                for i, frame in enumerate(self.frames1):
-                    path = os.path.join(CAPTURE_PATH, 'left%.2d.png' % i)
+                for i, frame in enumerate(self.rect1):
+                    path = os.path.join(CAPTURE_PATH, 'rect_left%.2d.png' % i)
                     print('Saving %s' % path)
                     imwrite(path, frame)
-                for i, frame in enumerate(self.frames2):
-                    path = os.path.join(CAPTURE_PATH, 'right%.2d.png' % i)
+                for i, frame in enumerate(self.rect2):
+                    path = os.path.join(CAPTURE_PATH, 'rect_right%.2d.png' % i)
                     print('Saving %s' % path)
                     imwrite(path, frame)
-        # Rectify the images
-        for frame in self.frames1:
-            rect = remap(frame, self.map1x, self.map1y, INTER_NEAREST, None, BORDER_CONSTANT)
-            self.rect1.append(rect)
-        for frame in self.frames2:
-            rect = remap(frame, self.map2x, self.map2y, INTER_NEAREST, None, BORDER_CONSTANT)
-            self.rect2.append(rect)
-        # Save the rectified images if necessary
-        if CAPTURE_PATH:
-            for i, frame in enumerate(self.rect1):
-                path = os.path.join(CAPTURE_PATH, 'rect_left%.2d.png' % i)
-                print('Saving %s' % path)
-                imwrite(path, frame)
-            for i, frame in enumerate(self.rect2):
-                path = os.path.join(CAPTURE_PATH, 'rect_right%.2d.png' % i)
-                print('Saving %s' % path)
-                imwrite(path, frame)
-        patternImages = [self.rect1[:-2], self.rect2[:-2]]
-        whiteImages = [self.rect1[-2], self.rect2[-2]]
-        blackImages = [self.rect1[-1], self.rect2[-1]]
-        patternImages = numpy.array(patternImages)
-        whiteImages = numpy.array(whiteImages)
-        blackImages = numpy.array(blackImages)
-        # Decode and reconstruct the pointcloud
-        retval, disparityMap = self.graycode.decode(patternImages, blackImages=blackImages, whiteImages=whiteImages)
-        if not retval:
-            return None # Error signal - decode() failed
-        disparityMap = numpy.float32(disparityMap)
-        # Process the disparity map
-        min = disparityMap.min()
-        max = disparityMap.max()
-        if min == max:
-            return None # Error signal - no data
-        alpha = 255.0 / (max - min)
-        scaledDisparityMap = convertScaleAbs(disparityMap, alpha=alpha)
-        # Use a threshold to remove noise
-        retval, thresh = threshold(scaledDisparityMap, 0, 255, THRESH_OTSU | THRESH_BINARY)
-        # Generate the pointcloud
-        pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
-        pointcloud[thresh == 0] = numpy.inf
-        pointcloud[(abs(pointcloud) > COORD_THRESH).any(2)] = numpy.inf
-        # Save the disparity map and pointcloud, both in NumPy and standard formats, if
-        # that debug flag is turned on.
-        if CAPTURE_PATH:
-            numpy.save(os.path.join(CAPTURE_PATH, 'disparity.npy'), disparityMap)
-            colorDisparityMap = applyColorMap(scaledDisparityMap, COLORMAP_JET)
-            imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), colorDisparityMap)
-            numpy.save(os.path.join(CAPTURE_PATH, 'pointcloud.npy'), pointcloud)
-            # Save pointcloud in plain text format for debug mode.
-            save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'), binary=False)
-        # TODO: error checking
-        return pointcloud
+            patternImages = [self.rect1[:-2], self.rect2[:-2]]
+            whiteImages = [self.rect1[-2], self.rect2[-2]]
+            blackImages = [self.rect1[-1], self.rect2[-1]]
+            patternImages = numpy.array(patternImages)
+            whiteImages = numpy.array(whiteImages)
+            blackImages = numpy.array(blackImages)
+            # Decode and reconstruct the pointcloud
+            retval, disparityMap = self.graycode.decode(patternImages, blackImages=blackImages, whiteImages=whiteImages)
+            if not retval:
+                return None # Error signal - decode() failed
+            disparityMap = numpy.float32(disparityMap)
+            # Process the disparity map
+            min = disparityMap.min()
+            max = disparityMap.max()
+            if min == max:
+                return None # Error signal - no data
+            alpha = 255.0 / (max - min)
+            scaledDisparityMap = convertScaleAbs(disparityMap, alpha=alpha)
+            # Use a threshold to remove noise
+            retval, thresh = threshold(scaledDisparityMap, 0, 255, THRESH_OTSU | THRESH_BINARY)
+            # Generate the pointcloud
+            pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
+            pointcloud[thresh == 0] = numpy.inf
+            pointcloud[(abs(pointcloud) > COORD_THRESH).any(2)] = numpy.inf
+            # Save the disparity map and pointcloud, both in NumPy and standard formats, if
+            # that debug flag is turned on.
+            if CAPTURE_PATH:
+                numpy.save(os.path.join(CAPTURE_PATH, 'disparity.npy'), disparityMap)
+                colorDisparityMap = applyColorMap(scaledDisparityMap, COLORMAP_JET)
+                imwrite(os.path.join(CAPTURE_PATH, 'disparity.png'), colorDisparityMap)
+                numpy.save(os.path.join(CAPTURE_PATH, 'pointcloud.npy'), pointcloud)
+                # Save pointcloud in plain text format for debug mode.
+                save_pcd(pointcloud, os.path.join(CAPTURE_PATH, 'pointcloud.pcd'), binary=False)
+            # TODO: error checking
+            return pointcloud
 
 
 
