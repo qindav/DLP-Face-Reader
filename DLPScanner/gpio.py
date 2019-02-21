@@ -3,11 +3,13 @@
 # ECEN 403-404
 
 import RPi.GPIO as GPIO
+import os
 import time
 
 
 
 # Channel constants
+POWER_BUTTON = 14
 SNAPSHOT_BUTTON = 15
 POWER_LED = 18
 WIFI_LED = 27
@@ -20,7 +22,7 @@ ERROR_LED = 24
 # If set to a nonzero integer, then at the beginning the processor
 # sleeps for that many seconds, and then automatically captures a pointcloud.
 # After that the application runs normally.
-AUTO_TIMER = 0
+AUTO_TIMER = 5
 
 
 
@@ -65,6 +67,13 @@ class IO(object):
             self.master.usb.send(data)
 
 
+    def shutdown(self):
+        # Shut the Raspberry Pi down
+        self.start_busy()
+        os.system('sudo shutdown -r now')
+        # Don't call end_busy(); wait for the Pi to completely turn off.
+
+
     def auto_timer(self, n):
         # DEBUG function that performs an automatic capture.
         for i in range(n):
@@ -91,6 +100,8 @@ class IO(object):
                     self.snapshot()
             else:
                 self.snapshot_reset = False
+            if GPIO.input(POWER_BUTTON) == GPIO.HIGH:
+                self.shutdown()
             time.sleep(.05) # Keep the processor from using up too much CPU time
         
 

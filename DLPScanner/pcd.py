@@ -1,12 +1,13 @@
-# Utility to save a numpy array (HxWx3 floating point values)
-# as a PCD format file
+# Operations on pointclouds (HxWx3 NumPy arrays of floating point values)
 # Matthew Kroesche
 # ECEN 404
 
 import numpy
 
 
+
 def save_pcd(pointcloud, filename, binary=True):
+    # Save a pointcloud in .pcd format
     with open(filename, 'wb') as o:
         h, w = pointcloud.shape[:2]
         points = pointcloud.reshape(w*h, 3)
@@ -34,6 +35,7 @@ DATA %b
 
 
 def load_pcd(filename):
+    # Load a pointcloud from .pcd format. Return the NumPy array
     with open(filename, 'rb') as o:
         n = 0
         while True:
@@ -47,6 +49,42 @@ def load_pcd(filename):
                 return pointcloud.reshape((n, 3))
                 
         
-            
-        
-            
+
+def filter_pcd(pointcloud, d=2):
+    # Try to remove the noise from a pointcloud. (Operates in place.)
+    # First, calculate the mean Z distance from each point to its neighbors
+    z = pcd[:, 2]
+    isinf = numpy.isinf(points).any(1)
+    counts = numpy.zeros(z.shape, z.dtype)
+    zsum = numpy.zeros(z.shape, z.dtype)
+    # Horizontal distances
+    ok = ~isinf[:, :-1] & ~isinf[:, 1:]
+    zsum[:, :-1][ok] += abs(points[:, :-1][ok] - points[:, 1:][ok])
+    counts[:, :-1][ok] += 1
+    zsum[:, 1:][ok] += abs(points[:, :-1][ok] - points[:, 1:][ok])
+    counts[:, 1:][ok] += 1
+    # Vertical distances
+    ok = ~isinf[:-1, :] & ~isinf[1:, :]
+    zsum[:-1, :][ok] += abs(points[:-1, :][ok] - points[1:, :][ok])
+    counts[:-1, :][ok] += 1
+    zsum[1:, :][ok] += abs(points[:-1, :][ok] - points[1:, :][ok])
+    counts[1:, :][ok] += 1
+    isinf |= (counts == 0)
+    if isinf.all():
+        # Bogus pointcloud
+        pointcloud.fill(numpy.inf)
+        return
+    # Mean distances
+    means = numpy.empty(z.shape, z.dtype)
+    means[~isinf] = zsum[~isinf] / counts[~isinf]
+    # Global mean and standard deviation of means
+    mean = means[~isinf].mean()
+    std = means[~isinf].std()
+    norm = (means - mean) / std
+    # Kick out any points whose "mean" distance is not within d standard deviations
+    # of the global mean. d defaults to 2, which means that on average, roughly 5%
+    # of the data points will be evicted.
+    isinf |= (abs(norm) > d)
+    pointcloud[isinf] = numpy.inf
+
+
