@@ -1,6 +1,8 @@
 # DLP Structured Light Scanner
 Texas A&M ECEN 403/404 Capstone Project
+
 Matthew Kroesche
+
 David Qin
 
 This repo contains a library and interface for stereo 3D structured light scanning, processing, and calibration using a Raspberry Pi 3 together with a Pi camera, a USB camera, and a display projector. (Any display may be used; in this project we used the TI DLP4500 LightCrafter EVM.)
