@@ -123,9 +123,9 @@ class OpenCV(object):
         # Initialize the cameras
         self.cam1 = PiCamera()
         self.cam2 = CVCamera(0)
+        self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.cam1.set_resolution(*CAM_SIZE)
         self.cam2.set_resolution(*CAM_SIZE)
-        self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.clear_frames()
         # Initialize the projector
         if not REUSE_CAPTURE_DATA:
@@ -419,7 +419,7 @@ class OpenCV(object):
         print('R = \\\n%r\n' % R)
         print('# Translation vector between two cameras')
         print('T = \\\n%r\n' % T)
-        print('Reprojection error %g' % retval)
+        print('# Reprojection error %g' % retval)
         print()
         # Set up remap and perspective transform data needed by snapshot().
         self.rectify(K1, D1, K2, D2, R, T)
