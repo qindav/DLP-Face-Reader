@@ -442,7 +442,7 @@ class OpenCV(object):
             namedWindow('Camera 1')
             namedWindow('Camera 2')
             if not REUSE_CAPTURE_DATA:
-                setWindowProperty('projector', WND_PROP_VISIBLE, False)
+                setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_NORMAL)
             waitKey(1)
 
     def end_preview(self):
@@ -458,14 +458,16 @@ class OpenCV(object):
         if self.has_preview and not REUSE_CAPTURE_DATA:
             setWindowProperty('Camera 1', WND_PROP_VISIBLE, False)
             setWindowProperty('Camera 2', WND_PROP_VISIBLE, False)
-            setWindowProperty('projector', WND_PROP_VISIBLE, True)
+            setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_FULLSCREEN)
+            waitKey(1)
 
     def resume_preview(self):
         # Resume the preview after we take a snapshot.
         if self.has_preview and not REUSE_CAPTURE_DATA:
             setWindowProperty('Camera 1', WND_PROP_VISIBLE, True)
             setWindowProperty('Camera 2', WND_PROP_VISIBLE, True)
-            setWindowProperty('projector', WND_PROP_VISIBLE, False)
+            setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_NORMAL)
+            waitKey(1)
 
     def update(self):
         # Update the preview if present.
