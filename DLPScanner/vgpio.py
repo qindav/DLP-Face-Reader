@@ -2,7 +2,8 @@
 # Matthew Kroesche
 # ECEN 404
 
-from Tkinter import *
+from tkinter import *
+import cv2
 
 # Channel constants
 POWER_BUTTON = 14
@@ -58,6 +59,7 @@ class VGPIO(object):
         self.root.withdraw()
         self.root.title('Virtual I/O')
         self.root.minsize(300, 0)
+        self.root.attributes('-topmost', True)
         self.power_button = Button(self.root, text='Power', command = lambda: self.inputs.add(POWER_BUTTON))
         self.power_button.pack(side=TOP, fill=X, padx=10, pady=10)
         self.snapshot_button = Button(self.root, text='Snapshot', command = lambda: self.inputs.add(SNAPSHOT_BUTTON))
@@ -89,6 +91,13 @@ class VGPIO(object):
 
 
     def output(self, id, status):
+        if id == BUSY_LED:
+            # Show or hide the projector depending on whether the device is busy
+            try:
+                cv2.setWindowProperty('projector', cv2.WND_PROP_FULLSCREEN, int(bool(status)))
+                cv2.waitKey(1)
+            except cv2.error:
+                pass
         for led in (self.power_led, self.wifi_led, self.usb_led, self.busy_led, self.error_led):
             if led.id == id:
                 if status:

@@ -441,8 +441,10 @@ class OpenCV(object):
             self.mirrored_preview = bool(mirrored)
             namedWindow('Camera 1')
             namedWindow('Camera 2')
-            if not REUSE_CAPTURE_DATA:
+            try:
                 setWindowProperty('projector', WND_PROP_FULLSCREEN, WINDOW_NORMAL)
+            except error:
+                pass
             waitKey(1)
 
     def end_preview(self):
