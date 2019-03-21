@@ -21,7 +21,7 @@ class PiCamera(object):
     def capture(self):
         raw = picamera.array.PiRGBArray(self.cam)
         self.cam.capture(raw, format='bgr', use_video_port=True)
-        return raw.array
+        return raw.array[::-1, ::-1]
 
     def set_resolution(self, w, h):
         self.cam.resolution = (w, h)

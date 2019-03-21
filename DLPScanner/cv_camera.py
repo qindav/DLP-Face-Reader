@@ -20,7 +20,7 @@ class CVCamera(object):
         for i in range(self.n):
             retval, im = self.cam.read()
             assert retval, 'Error capturing image with CV camera'
-        return im
+        return im[::-1, ::-1]
 
     def set_resolution(self, w, h):
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, w)
