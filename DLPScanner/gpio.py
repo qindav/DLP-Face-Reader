@@ -3,6 +3,8 @@
 # ECEN 403-404
 
 import RPi.GPIO as GPIO
+#from .vgpio import GPIO
+
 import os
 import time
 
@@ -103,6 +105,8 @@ class IO(object):
                 self.snapshot_reset = False
             if GPIO.input(POWER_BUTTON) == GPIO.HIGH:
                 self.shutdown()
+            if hasattr(self.master.opencv, 'update'):
+                self.master.opencv.update()
             time.sleep(.05) # Keep the processor from using up too much CPU time
         
 

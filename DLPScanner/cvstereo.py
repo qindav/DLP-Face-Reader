@@ -48,6 +48,9 @@ CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteri
 
 COORD_THRESH = 100     # Threshold for pointcloud distance from the origin
 
+SHOW_PREVIEW = False  # Debug feature that displays a preview of the camera on screen
+MIRROR_PREVIEW = True # Toggles whether or not the preview is mirrored
+
 
 
 
@@ -136,6 +139,10 @@ class OpenCV(object):
         if K1 is not None:
             self.rectify(K1, D1, K2, D2, R, T)
         # Otherwise we need to call calibrate() first in this case.
+        # Set up the preview
+        self.has_preview = self.mirrored_preview = False
+        if SHOW_PREVIEW:
+            self.start_preview(MIRROR_PREVIEW)
         
 
 
@@ -143,6 +150,7 @@ class OpenCV(object):
         # Close the cameras and the projector
         self.cam1.close()
         self.cam2.close()
+        self.end_preview()
         if not REUSE_CAPTURE_DATA:
             destroyWindow('projector')
 
@@ -167,6 +175,7 @@ class OpenCV(object):
 
     def capture(self):
         # Capture a single image with both cameras
+        self.pause_preview()
         with Bench('PRE_DELAY'):
             waitKey(PRE_DELAY)
         with Bench('Left camera capture'):
@@ -187,6 +196,7 @@ class OpenCV(object):
             self.frames2.append(frame2)
         with Bench('POST_DELAY'):
             waitKey(POST_DELAY)
+        self.resume_preview()
             
         
 
@@ -281,11 +291,9 @@ class OpenCV(object):
     def calibrate(self):
         # Calibrate the cameras
         self.clear_frames()
-        namedWindow('cam1')
-        namedWindow('cam2')
-        # cam2 is physically to the left of cam1 when you're facing it, so put it to the left on the screen.
-        moveWindow('cam2', 50, 50)
-        moveWindow('cam1', 100+CAM_SIZE[0], 50)
+        if not SHOW_PREVIEW:
+            # Start a preview if there's not already one.
+            self.start_preview(MIRROR_PREVIEW)
         # Initialize the calibration result arrays
         objpoints = []
         grid = [(j*SQUARE_SIZE, i*SQUARE_SIZE, 0) for i in range(CB_SIZE[1]) for j in range(CB_SIZE[0])]
@@ -311,17 +319,15 @@ class OpenCV(object):
                 # Camera preview loop
                 while True:
                     # Show the mirrored captures, since this behavior is more intuitive.
-                    imshow('cam1', self.cam1.capture()[:, ::-1])
-                    imshow('cam2', self.cam2.capture()[:, ::-1])
-                    retval = waitKey(1)
+                    retval = self.update()
                     if retval != -1:
                         break
                 if retval == 27:
                     break # escape means we're done capturing
                 self.capture()
             # Show the images
-            imshow('cam1', self.frames1[-1])
-            imshow('cam2', self.frames2[-1])
+            imshow('Camera 1', self.frames1[-1])
+            imshow('Camera 2', self.frames2[-1])
             waitKey(1) # Update the images
             # Find the corners in both images
             ret1, corners1 = findChessboardCorners(self.frames1[-1], CB_SIZE, None)
@@ -350,8 +356,8 @@ class OpenCV(object):
                     frame1 = drawChessboardCorners(frame1, CB_SIZE, subpix1, ret1)
                     frame2 = cvtColor(self.frames2[-1], COLOR_GRAY2BGR)
                     frame2 = drawChessboardCorners(frame2, CB_SIZE, subpix2, ret2)
-                    imshow('cam1', frame1)
-                    imshow('cam2', frame2)
+                    imshow('Camera 1', frame1)
+                    imshow('Camera 1', frame2)
                     print('Successfully found %d calibration data point%s.' % (len(objpoints), '' if len(objpoints) == 1 else 's'))
                     if REUSE_CALIB_DATA:
                         # If we're just reusing old data, don't waste the user's time by making them press keys for no reason.
@@ -365,9 +371,8 @@ class OpenCV(object):
             else:
                 print('Failed to find corners using camera #1.')
         # Clean up
-        destroyWindow('cam1')
-        destroyWindow('cam2')
-        waitKey(1) # Delete windows on screen
+        if not SHOW_PREVIEW:
+            self.end_preview()
         # Obtain calibration data
         if objpoints:
             objpoints = numpy.array(objpoints, numpy.float32)
@@ -427,5 +432,51 @@ class OpenCV(object):
         
 
 
+    # Camera preview debugging tools
 
+    def start_preview(self, mirrored=True):
+        # Create OpenCV preview windows.
+        if not self.has_preview:
+            self.has_preview = True
+            self.mirrored_preview = bool(mirrored)
+            namedWindow('Camera 1')
+            namedWindow('Camera 2')
+            if not REUSE_CAPTURE_DATA:
+                setWindowProperty('projector', WND_PROP_VISIBLE, False)
+            waitKey(1)
+
+    def end_preview(self):
+        # Close OpenCV preview windows.
+        if self.has_preview:
+            destroyWindow('Camera 1')
+            destroyWindow('Camera 2')
+            self.has_preview = False
+            waitKey(1)
+
+    def pause_preview(self):
+        # Pause the preview if we're about to take a snapshot.
+        if self.has_preview and not REUSE_CAPTURE_DATA:
+            setWindowProperty('Camera 1', WND_PROP_VISIBLE, False)
+            setWindowProperty('Camera 2', WND_PROP_VISIBLE, False)
+            setWindowProperty('projector', WND_PROP_VISIBLE, True)
+
+    def resume_preview(self):
+        # Resume the preview after we take a snapshot.
+        if self.has_preview and not REUSE_CAPTURE_DATA:
+            setWindowProperty('Camera 1', WND_PROP_VISIBLE, True)
+            setWindowProperty('Camera 2', WND_PROP_VISIBLE, True)
+            setWindowProperty('projector', WND_PROP_VISIBLE, False)
+
+    def update(self):
+        # Update the preview if present.
+        if self.has_preview:
+            im1 = self.cam1.capture()
+            im2 = self.cam2.capture()
+            if self.mirrored_preview:
+                im1 = im1[:, ::-1]
+                im2 = im2[:, ::-1]
+            imshow('Camera 1', im1)
+            imshow('Camera 2', im2)
+            return waitKey(1)
+        return -1
 
