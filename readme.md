@@ -58,9 +58,9 @@ SCREEN_SIZE = (1280, 800)
 ```
 for a 1280 by 800 pixel display.
 
-9. Fix the cameras in place, such that they are roughly at the same vertical level, but spaced at least a couple of inches apart from each other horizontally. They should probably be positioned a couple of inches above the projector as well. Make sure that both cameras can see the entire pattern being projected; this is more of an issue for cameras with a narrower FOV. To preview the Pi camera, you can do
+9. Fix the cameras in place, such that they are roughly at the same vertical level, but spaced at least a couple of inches apart from each other horizontally. They should probably be positioned a couple of inches above the projector as well. Make sure that both cameras can see the entire pattern being projected; this is more of an issue for cameras with a narrower FOV. To preview the cameras, you can do
 ```
-$ python -c "import picamera; cam = picamera.PiCamera(); cam.start_preview()"
+$ ~/Desktop/DLPScanner/preview
 ```
 Very important: If you move either of the cameras or adjust their focus, you will need to calibrate again. Thus it's important to make sure they're fixed firmly in a position where they can see the entire projected pattern before you continue to step 10!
 
