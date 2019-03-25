@@ -42,7 +42,7 @@ POST_DELAY = 20        # The delay (in milliseconds) after an image is captured
 
 CB_SIZE = (7, 9)       # The size of the chessboard used in calibration
 WIN_SIZE = (11, 11)    # The size of the search window used in calibration
-SQUARE_SIZE = 1.0      # The unit size of the chessboard squares
+SQUARE_SIZE = 60.0     # The unit size of the chessboard squares, in mm (or whatever unit makes the most sense)
 
 CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteria used in calibration
 
@@ -54,46 +54,49 @@ MIRROR_PREVIEW = True # Toggles whether or not the preview is mirrored
 
 
 
-# Data from calibration 3/21/2019
+# Data from calibration 3/25/2019
 # Total of 30 calibration data points
 
 # Intrinsic matrix of first camera
 K1 = \
-array([[553.08758166,   0.        , 319.84091841],
-       [  0.        , 552.6875277 , 196.28149515],
+array([[551.2520689 ,   0.        , 322.93185144],
+       [  0.        , 551.98395443, 199.82003887],
        [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of first camera
 D1 = \
-array([[ 0.14257299, -0.19542119,  0.00037221, -0.00231872, -0.16078395,
+array([[ 0.12542659, -0.06250738,  0.00234922,  0.00063988, -0.45436419,
          0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
          0.        ,  0.        ,  0.        ,  0.        ]])
 
 # Intrinsic matrix of second camera
 K2 = \
-array([[470.12383109,   0.        , 318.66268048],
-       [  0.        , 391.34442222, 205.96650954],
+array([[466.2922824 ,   0.        , 327.62718112],
+       [  0.        , 389.05644259, 208.08238316],
        [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of second camera
 D2 = \
-array([[-0.44102957,  0.29181155,  0.00091383,  0.003211  , -0.14261378,
-         0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
-         0.        ,  0.        ,  0.        ,  0.        ]])
+array([[-4.21575319e-01,  2.26886662e-01,  4.08833837e-04,
+         1.13444217e-03, -7.43429163e-02,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00]])
 
 # Rotation matrix between two cameras
 R = \
-array([[ 0.99650186,  0.07672232,  0.03313201],
-       [-0.07684117,  0.99704063,  0.00232705],
-       [-0.03285543, -0.00486481,  0.99944828]])
+array([[ 0.9968592 ,  0.07602394,  0.02218334],
+       [-0.07609699,  0.99709737,  0.00246668],
+       [-0.02193142, -0.00414702,  0.99975088]])
 
 # Translation vector between two cameras
 T = \
-array([[ 1.41309511],
-       [-0.01815527],
-       [-0.14222894]])
+array([[83.44521019],
+       [-1.24168223],
+       [-9.48903976]])
 
-# Reprojection error 0.742772
+# Reprojection error 1.02961
+
 
 
 
@@ -133,6 +136,9 @@ class OpenCV(object):
         self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.cam1.set_resolution(*CAM_SIZE)
         self.cam2.set_resolution(*CAM_SIZE)
+        # Both cameras are upside-down, so call flip() to account for this.
+        self.cam1.flip()
+        self.cam2.flip()
         self.clear_frames()
         # Initialize the projector
         if not REUSE_CAPTURE_DATA:
