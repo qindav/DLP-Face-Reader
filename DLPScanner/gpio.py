@@ -11,7 +11,7 @@ import time
 
 
 # Channel constants
-POWER_BUTTON = 14
+POWER_BUTTON = 17
 SNAPSHOT_BUTTON = 15
 POWER_LED = 18
 WIFI_LED = 27
