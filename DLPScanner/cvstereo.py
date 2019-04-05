@@ -23,7 +23,7 @@ Bench.on = False # Disable benchmarking
 
 CALIB_PATH = None # This is where the .png format calibration images and
 # .npy format calibration results are saved.
-CAPTURE_PATH = None # This is where the .png format captured images and
+CAPTURE_PATH = '/home/pi/Desktop/stereo_captures' # This is where the .png format captured images and
 # .npy format pointcloud/disparity data are saved.
 # (These are debug features, and should ultimately be disabled as they waste precious time.)
 
@@ -33,6 +33,8 @@ REUSE_CAPTURE_DATA = False # Debug feature that, if set, loads images from CAPTU
 CAM_SIZE = (640, 400)     # The resolution of the camera image arrays, in pixels (width * height)
 PROJ_SIZE = (320, 200)    # The resolution of the projector image arrays, in pixels (width * height)
 SCREEN_SIZE = (1280, 800) # The size of the actual screen. If this is not given it is assumed to be the same as PROJ_SIZE.
+
+CV_BRIGHTNESS = -20.0  # Corrective factor to keep the CV camera from being overexposed
 
 BLACK_THRESH = None    # (Optional) The black threshold of the graycode
 WHITE_THRESH = None    # (Optional) The white threshold of the graycode
@@ -46,56 +48,60 @@ SQUARE_SIZE = 60.0     # The unit size of the chessboard squares, in mm (or what
 
 CRITERIA = (TERM_CRITERIA_EPS | TERM_CRITERIA_MAX_ITER, 30, 0.001) # The criteria used in calibration
 
-COORD_THRESH = 100     # Threshold for pointcloud distance from the origin
+COORD_THRESH = 6000  # Threshold for pointcloud distance from the origin
 
 SHOW_PREVIEW = False  # Debug feature that displays a preview of the camera on screen
 MIRROR_PREVIEW = True # Toggles whether or not the preview is mirrored
+FLIP_CAMS = True      # Set to true if the cameras are upside-down
 
 
 
 
-# Data from calibration 3/25/2019
-# Total of 30 calibration data points
+# Data from calibration 4/5/2019
+# Total of 35 calibration data points
 
 # Intrinsic matrix of first camera
 K1 = \
-array([[551.2520689 ,   0.        , 322.93185144],
-       [  0.        , 551.98395443, 199.82003887],
+array([[552.37093484,   0.        , 312.38684982],
+       [  0.        , 553.08451379, 191.96805667],
        [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of first camera
 D1 = \
-array([[ 0.12542659, -0.06250738,  0.00234922,  0.00063988, -0.45436419,
-         0.        ,  0.        ,  0.        ,  0.        ,  0.        ,
-         0.        ,  0.        ,  0.        ,  0.        ]])
+array([[ 1.76963786e-01, -4.22310403e-01,  2.61196359e-04,
+         2.63926754e-03,  3.07147819e-01,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
+         0.00000000e+00,  0.00000000e+00]])
 
 # Intrinsic matrix of second camera
 K2 = \
-array([[466.2922824 ,   0.        , 327.62718112],
-       [  0.        , 389.05644259, 208.08238316],
+array([[462.84520765,   0.        , 329.50479462],
+       [  0.        , 386.72777661, 207.75643695],
        [  0.        ,   0.        ,   1.        ]])
 
 # Distortion coefficients of second camera
 D2 = \
-array([[-4.21575319e-01,  2.26886662e-01,  4.08833837e-04,
-         1.13444217e-03, -7.43429163e-02,  0.00000000e+00,
+array([[-3.83593309e-01,  6.74062607e-02, -3.63833476e-05,
+         7.48289831e-04,  1.21287726e-01,  0.00000000e+00,
          0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
          0.00000000e+00,  0.00000000e+00,  0.00000000e+00,
          0.00000000e+00,  0.00000000e+00]])
 
 # Rotation matrix between two cameras
 R = \
-array([[ 0.9968592 ,  0.07602394,  0.02218334],
-       [-0.07609699,  0.99709737,  0.00246668],
-       [-0.02193142, -0.00414702,  0.99975088]])
+array([[ 0.99790581,  0.06428629,  0.00715947],
+       [-0.06421373,  0.99788664, -0.00994222],
+       [-0.00778349,  0.00946166,  0.99992494]])
 
 # Translation vector between two cameras
 T = \
-array([[83.44521019],
-       [-1.24168223],
-       [-9.48903976]])
+array([[ 82.23273968],
+       [ -1.54253407],
+       [-16.61643595]])
 
-# Reprojection error 1.02961
+# Reprojection error 1.1633
+
 
 
 
@@ -136,9 +142,11 @@ class OpenCV(object):
         self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.cam1.set_resolution(*CAM_SIZE)
         self.cam2.set_resolution(*CAM_SIZE)
+        self.cam2.set_brightness(CV_BRIGHTNESS)
         # Both cameras are upside-down, so call flip() to account for this.
-        self.cam1.flip()
-        self.cam2.flip()
+        if FLIP_CAMS:
+            self.cam1.flip()
+            self.cam2.flip()
         self.clear_frames()
         # Initialize the projector
         if not REUSE_CAPTURE_DATA:
@@ -282,8 +290,12 @@ class OpenCV(object):
                 retval, thresh = threshold(scaledDisparityMap, 0, 255, THRESH_OTSU | THRESH_BINARY)
                 # Generate the pointcloud
                 pointcloud = reprojectImageTo3D(disparityMap, self.Q, handleMissingValues=True)
+                # Filter the pointcloud
                 pointcloud[thresh == 0] = numpy.inf
                 pointcloud[(abs(pointcloud) > COORD_THRESH).any(2)] = numpy.inf
+                filter_pcd(pointcloud)
+                if FLIP_CAMS:
+                    pointcloud[..., 1] = -pointcloud[..., 1]
                 # Save the disparity map and pointcloud, both in NumPy and standard formats, if
                 # that debug flag is turned on.
                 if CAPTURE_PATH:

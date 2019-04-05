@@ -12,10 +12,14 @@ import sys
 from visual import *
 from pcd import *
 
+Z_FILTER_MAX = float('inf')
+Z_FILTER_MIN = -float('inf')
+
 
 def visualize(pcd):
     
     # Apply a color wedge
+    pcd = pcd[(Z_FILTER_MIN <= pcd[:,2]) & (pcd[:,2] <= Z_FILTER_MAX)]
     color_scale = 1.0 / (pcd[:,2].max() - pcd[:,2].min())
     hue = 6.0 * color_scale * (pcd[:,2] - pcd[:,2].min())
     col = numpy.zeros(pcd.shape, float)

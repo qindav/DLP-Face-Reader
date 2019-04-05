@@ -9,7 +9,11 @@ import numpy
 def save_pcd(pointcloud, filename, binary=True):
     # Save a pointcloud in .pcd format
     with open(filename, 'wb') as o:
-        h, w = pointcloud.shape[:2]
+        if pointcloud.ndim == 2:
+            h = 1
+            w = pointcloud.shape[0]
+        else:
+            h, w = pointcloud.shape[:2]
         points = pointcloud.reshape(w*h, 3)
         points = points[~numpy.isinf(points).any(1)]
         # Header

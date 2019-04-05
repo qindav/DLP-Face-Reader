@@ -27,6 +27,9 @@ class CVCamera(object):
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, w)
         self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, h)
 
+    def set_brightness(self, val):
+        self.cam.set(cv2.CAP_PROP_BRIGHTNESS, val)
+
     def set_n(self, n):
         # n is the total number of times read() needs to be called
         # for each capture. You'd think it would always be 1, but for

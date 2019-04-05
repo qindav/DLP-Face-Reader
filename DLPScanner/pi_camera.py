@@ -27,5 +27,8 @@ class PiCamera(object):
     def set_resolution(self, w, h):
         self.cam.resolution = (w, h)
 
+    def set_brightness(self, val):
+        self.cam.brightness = val
+
     def flip(self, do_flip=True):
         self.do_flip = bool(do_flip)
