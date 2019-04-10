@@ -2,8 +2,12 @@
 # Matthew Kroesche
 # ECEN 403-404
 
-import RPi.GPIO as GPIO
-#from .vgpio import GPIO
+IS_VIRTUAL = True
+
+if IS_VIRTUAL:
+    from .vgpio import GPIO
+else:
+    import RPi.GPIO as GPIO
 
 import os
 import time
@@ -36,6 +40,7 @@ class IO(object):
     def __init__(self, master):
         self.master = master
         self.snapshot_reset = False # Flag to make sure only one button press is detected per "click"
+        self.is_virtual = IS_VIRTUAL
 
     def init(self):
         GPIO.setmode(GPIO.BCM)

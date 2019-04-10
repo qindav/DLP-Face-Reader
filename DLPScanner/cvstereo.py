@@ -34,7 +34,8 @@ CAM_SIZE = (640, 400)     # The resolution of the camera image arrays, in pixels
 PROJ_SIZE = (320, 200)    # The resolution of the projector image arrays, in pixels (width * height)
 SCREEN_SIZE = (1280, 800) # The size of the actual screen. If this is not given it is assumed to be the same as PROJ_SIZE.
 
-CV_BRIGHTNESS = -20.0  # Corrective factor to keep the CV camera from being overexposed
+CV_BRIGHTNESS = 0.0    # Corrective factor to keep the CV camera from being overexposed
+EVM_BRIGHTNESS = 160   # Corrective factor to dim the brightness of the projector patterns
 
 BLACK_THRESH = None    # (Optional) The black threshold of the graycode
 WHITE_THRESH = None    # (Optional) The white threshold of the graycode
@@ -136,13 +137,17 @@ class OpenCV(object):
         # Resize the pattern images if necessary
         if SCREEN_SIZE and (SCREEN_SIZE != PROJ_SIZE):
             self.pattern = [resize(im, SCREEN_SIZE) for im in self.pattern]
+        if EVM_BRIGHTNESS != 255:
+            for pat in self.pattern:
+                pat[...] = ((pat * float(EVM_BRIGHTNESS)) / 255.0).round()
         # Initialize the cameras
         self.cam1 = PiCamera()
         self.cam2 = CVCamera(0)
         self.cam2.set_n(5) # 5 "grabs" for every actual capture, for some reason or another.
         self.cam1.set_resolution(*CAM_SIZE)
         self.cam2.set_resolution(*CAM_SIZE)
-        self.cam2.set_brightness(CV_BRIGHTNESS)
+        if CV_BRIGHTNESS:
+            self.cam2.set_brightness(CV_BRIGHTNESS)
         # Both cameras are upside-down, so call flip() to account for this.
         if FLIP_CAMS:
             self.cam1.flip()
@@ -221,6 +226,8 @@ class OpenCV(object):
         # Capture and process a sequence of stereo images
         with Bench('Total processing time'):
             self.pause_preview()
+            # Move the cursor out of the way
+            os.system('xdotool mousemove `xdotool getdisplaygeometry`')
             try:
                 
                 self.clear_frames()
@@ -237,6 +244,11 @@ class OpenCV(object):
                     if not (self.frames1 and self.frames2):
                         return None # Error signal: haven't previously captured anything
                 else:
+                    if self.master.io and self.master.io.is_virtual:
+                        # Wait for a second so the screen doesn't show up in the first capture
+                        imshow('projector', self.pattern[0])
+                        waitKey(1)
+                        time.sleep(1)
                     # Capture a new sequence of images
                     for pattern in self.pattern:
                         imshow('projector', pattern)
