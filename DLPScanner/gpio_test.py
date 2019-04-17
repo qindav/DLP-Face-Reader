@@ -32,7 +32,7 @@ while True:
     elif s.startswith('e'):
         GPIO.output(ERROR_LED, GPIO.LOW)
     elif s.startswith('1'):
-        print('Power button state: %d' % GPIO.input(POWER_BUTTON))
+        print('Power/eject button state: %d' % GPIO.input(EJECT_BUTTON))
     elif s.startswith('2'):
         print('Snapshot button state: %d' % GPIO.input(SNAPSHOT_BUTTON))
     elif not s:

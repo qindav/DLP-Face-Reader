@@ -2,7 +2,7 @@
 # Matthew Kroesche
 # ECEN 403-404
 
-IS_VIRTUAL = True
+IS_VIRTUAL = False
 
 if IS_VIRTUAL:
     from .vgpio import GPIO
@@ -15,7 +15,7 @@ import time
 
 
 # Channel constants
-POWER_BUTTON = 17
+EJECT_BUTTON = 17
 SNAPSHOT_BUTTON = 15
 POWER_LED = 18
 WIFI_LED = 27
@@ -45,7 +45,7 @@ class IO(object):
     def init(self):
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
-        GPIO.setup(POWER_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(EJECT_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(SNAPSHOT_BUTTON, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup([POWER_LED, WIFI_LED, USB_LED, BUSY_LED, ERROR_LED], GPIO.OUT, initial=GPIO.LOW)
         GPIO.output(POWER_LED, GPIO.HIGH) # Power LED should always be lit
@@ -73,6 +73,13 @@ class IO(object):
         if data is not None:
             self.master.wifi.send(data)
             self.master.usb.send(data)
+
+
+    def eject(self):
+        # Eject USB storage device
+        self.start_busy()
+        self.master.usb.eject()
+        self.end_busy()
 
 
     def shutdown(self):
@@ -108,8 +115,11 @@ class IO(object):
                     self.snapshot()
             else:
                 self.snapshot_reset = False
-            if GPIO.input(POWER_BUTTON) == GPIO.HIGH:
-                self.shutdown()
+            if GPIO.input(EJECT_BUTTON) == GPIO.HIGH:
+                if self.usb.connected():
+                    self.eject()
+                else:
+                    self.shutdown()
             if hasattr(self.master.opencv, 'update'):
                 self.master.opencv.update()
             time.sleep(.05) # Keep the processor from using up too much CPU time

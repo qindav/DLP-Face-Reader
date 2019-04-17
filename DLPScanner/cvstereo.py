@@ -35,7 +35,7 @@ PROJ_SIZE = (320, 200)    # The resolution of the projector image arrays, in pix
 SCREEN_SIZE = (1280, 800) # The size of the actual screen. If this is not given it is assumed to be the same as PROJ_SIZE.
 
 CV_BRIGHTNESS = 0.0    # Corrective factor to keep the CV camera from being overexposed
-EVM_BRIGHTNESS = 160   # Corrective factor to dim the brightness of the projector patterns
+EVM_BRIGHTNESS = 120   # Corrective factor to dim the brightness of the projector patterns
 
 BLACK_THRESH = None    # (Optional) The black threshold of the graycode
 WHITE_THRESH = None    # (Optional) The white threshold of the graycode

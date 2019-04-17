@@ -6,7 +6,7 @@ from tkinter import *
 import cv2
 
 # Channel constants
-POWER_BUTTON = 14
+EJECT_BUTTON = 17
 SNAPSHOT_BUTTON = 15
 POWER_LED = 18
 WIFI_LED = 27
@@ -60,8 +60,8 @@ class VGPIO(object):
         self.root.title('Virtual I/O')
         self.root.minsize(300, 0)
         self.root.attributes('-topmost', True)
-        self.power_button = Button(self.root, text='Power', command = lambda: self.inputs.add(POWER_BUTTON))
-        self.power_button.pack(side=TOP, fill=X, padx=10, pady=10)
+        self.eject_button = Button(self.root, text='Eject USB', command = lambda: self.inputs.add(EJECT_BUTTON))
+        self.eject_button.pack(side=TOP, fill=X, padx=10, pady=10)
         self.snapshot_button = Button(self.root, text='Snapshot', command = lambda: self.inputs.add(SNAPSHOT_BUTTON))
         self.snapshot_button.pack(side=TOP, fill=X, padx=10, pady=10)
         self.power_led = LED(self, POWER_LED, 'Power', '#070', '#0f0')

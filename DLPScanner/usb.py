@@ -43,3 +43,18 @@ class USB(object):
             return
         # Save the pointcloud to the file
         save_pcd(pointcloud, filename)
+
+    def eject(self):
+        # Eject the USB device
+        dir = os.listdir(USB_PATH)
+        if not dir:
+            return # Does not exist, so do nothing
+        path = dir[0]
+        os.system('sudo umount %s' % os.path.join(USB_PATH, path))
+        
+        
+
+
+
+
+
