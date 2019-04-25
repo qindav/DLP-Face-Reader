@@ -76,7 +76,13 @@ You should see two windows pop up on screen, one showing the preview for each ca
 
 11. Copy the calibration parameters (all the output starting with the line "# Intrinsic matrix of first camera") and paste it to replace the calibration data that is currently at the top of cvstereo.py.
 
-12. Set up the GPIO. This can just be a simple breadboard with buttons and LEDs connected to the Pi. Make sure you have a resistor in series with every button and LED to keep it from being shorted! Some buttons and LEDs can be left off, but at minimum you should have a snapshot button and error/busy LEDs. The BCM port numbers for all the buttons and LEDs are at the top of gpio.py. If you want to build an actual physical device, you can also design a printed/soldered circuit board to connect to the pi without too much trouble, but for getting started a breadboard works just fine.
+12. Set up the GPIO. This can just be a simple breadboard with buttons and LEDs connected to the Pi. Make sure you have a resistor in series with every button and LED to keep it from being shorted! Some buttons and LEDs can be left off, but at minimum you should have a snapshot button and error/busy LEDs. The BCM port numbers for all the buttons and LEDs are at the top of gpio.py. If you want to build an actual physical device, you can also design a printed/soldered circuit board to connect to the pi without too much trouble, but for getting started a breadboard works just fine. 
+
+Alternatively, you can go to the top of the gpio.py file and set
+```
+IS_VIRTUAL = True
+```
+Doing this will cause a dialog to come up onscreen when the device is running, showing the buttons and LEDs. This is a useful way to emulate the behavior of a GPIO board without actually building one.
 
 13. Start scanning! Run this command:
 ```
@@ -94,6 +100,27 @@ $ ~/Desktop/DLPScanner/visualize.py
 This script can also be given an argument, which is the filename of the pointcloud to view. It defaults to whatever pointcloud was most recently scanned.
 
 
+
+
+### Usage (mainly for the prototype our team designed)
+
+1. The device has two power cables, one for the camera and one for the projector. (The original plan was to have an onboard power system, but due to the large power consumption of the Texas Instruments DLP EVM, this was not feasible.) When *both* cables are plugged in, the device will automatically start up. Once it boots, the ~/Desktop/DLPScanner/init script should immediately be started by .bashrc. The *POWER* and *BUSY* LEDs will come on, and then after a bit the busy light will turn off, and the screen will go dark. This signals that the device is ready to begin capturing.
+
+2. Press the *SCAN* button to begin a capture. When this button is pressed, a sequence of structured light patterns will be projected, and images will be captured for each one. The whole process takes about 7-8 seconds. When it is done, the *BUSY* LED will stay on for about 1 second while the pointcloud is being generated, then it will turn off.
+
+3. If a remote machine connects to the Pi's IP address, it can upload the most recently captured pointcloud using David's remote application interface (see below). The blue *WIFI* light should light up whenever a remote machine connects; however, this interface is known to be a bit buggy. At the time of this writing, the transmission of wireless pointclouds works fine, but the wifi light does not light up.
+
+4. Whenever a USB remote storage device is connected to the device, all pointclouds captured will be saved to the drive. We have found this method to actually be much more effective and convenient than using wifi. Once you have the pointcloud, you can use visualize.py to view it. The white *USB* light should light up whenever such a device is connected.
+
+5. The USB device can be disconnected by tapping the power/eject button. This will illuminate the *BUSY* LED for a fraction of a second, then both the *BUSY* and *USB* LEDs will turn off, signifying that the drive has been ejected and can be safely removed.
+
+6. Whenever a USB drive is *not* connected, the *POWER* button shuts down the Raspberry Pi, so that it is safe to unplug it from the wall power. As a consequence of this, a mildly annoying implementation detail (which shouldn't be too hard to fix, look in gpio.py for the code) is that if a USB drive is connected, if you hold down the ejector button for very long, the drive will be ejected, and then the Pi will be shut down following this. For this reason, we recommend lightly tapping the button.
+
+7. Inside the box (which can be opened by unscrewing the four screws) the Pi is situated on top of the EVM. There is a plastic insulator in between, and ventilation holes are drilled near the heat sinks of the EVM. There is space in the back of the box where lots of cables are taped down; at the front are the two cameras. Fastened to the underside of the lid is the GPIO board. Once the lid is unscrewed from the box, it can easily be opened to the side near the Pi, to get to the components inside without removing the wiring connecting the GPIO board to the Pi.
+
+8. Connected to the Pi is a dongle to communicate with a wireless keyboard and mouse that come with the device. Ordinarily you should not need to use these, but if you so desire, while the device is running you can use Ctrl+Alt+Delete to bring up the task manager, kill the Python task, and then navigate the files on the device to your heart's content. If you do this, we recommend using a whiteboard or a blank wall about one meter from the device for optimal viewing of the screen. When you shut down the pi, the next time it boots the init script will again run.
+
+9. If you need to tweak the focus of the DLP EVM for whatever reason, you can fish around in the hole that the projector lens pokes through, to the left of the lens, with a toothpick or similar, to twist the focus knob. Not the most streamlined approach, but it beats taking the whole box apart to get to the focus knob. Under most circumstances you shouldn't need to change this though.
 
 
 
