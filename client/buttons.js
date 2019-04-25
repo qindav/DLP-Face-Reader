@@ -13,13 +13,18 @@ document.getElementById('fileinput').addEventListener('change', function(){
     var reader = new FileReader();
     reader.onload = function(e) {
         text = reader.result;
-        //console.log(text);
     }
     reader.readAsText(file);
     drawStuff(file);
 
 }, false);
 
+function invertScene(){
+    invert();
+}
+function screenshotScene(){
+    screenshot();
+}
 //Server data upload
 function LinkCheck(url)
 {
@@ -28,20 +33,19 @@ function LinkCheck(url)
     http.send();
     return http.status!=404;
 }
+
 function checkFiles(){
     if(LinkCheck('upload.pcd')){
-        var file = null;
         var xmlhttp = new XMLHttpRequest();
         xmlhttp.open("GET", 'upload.pcd', false);
         xmlhttp.send();
         if (xmlhttp.status==200)
             text = xmlhttp.response;
         
-        console.log("name : " + file);
-        crapdrawStuff('upload.pcd');
+        distantDrawStuff('upload.pcd');
     }
     else{
-        console.log("Nothing is here");
+        alert("No file found on server");
     }
 }
 
@@ -66,7 +70,8 @@ function download(data, filename, type) {
 function downloadFile(){
     if(text == null)
         alert('No files submitted')
-    download(text,"export.pcd",".txt");
+    else
+        download(text,"export.pcd",".txt");
 }
 
 
